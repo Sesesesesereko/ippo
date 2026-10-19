@@ -330,7 +330,7 @@ await step('メニューとデータの説明', async () => {
   await vis('データについて').waitFor();
   await vis('データはこのブラウザの中だけにあります').waitFor();
   await vis('ブラウザの記録を消す・別のブラウザで開く・長く使わないと、なくなることがあります').waitFor();
-  await vis('今の量：スクショ 2枚', false).waitFor();
+  await vis('今の量：スクショ 2枚（ほかに見本 5件）', false).waitFor();
   await shot('12-menu');
   await checkLayout('メニュー');
 });

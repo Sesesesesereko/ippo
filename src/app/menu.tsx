@@ -9,7 +9,7 @@ import { colors, font, radius } from '../ui/theme';
 
 function Row({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}>
       <Text style={[s.rowText, danger && { color: colors.danger }]}>{label}</Text>
       <Text style={s.chev}>›</Text>
     </Pressable>
@@ -20,7 +20,8 @@ export default function Menu() {
   const { items, addSamples, removeSamples, clearAll, showToast } = useApp();
   const [prov, setProv] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
-  const hasSample = items.some((i) => i.isSample);
+  const sampleCount = items.filter((i) => i.isSample).length;
+  const hasSample = sampleCount > 0;
   const ownCount = items.filter((i) => !i.isSample).length;
 
   return (
@@ -60,7 +61,7 @@ export default function Menu() {
             : 'アプリを消すと、なくなります'}
         </NoteText>
         <NoteText>
-          今の量：スクショ {ownCount}枚{hasSample ? '（ほかに見本 6件）' : ''}
+          今の量：スクショ {ownCount}枚{hasSample ? `（ほかに見本 ${sampleCount}件）` : ''}
         </NoteText>
       </Note>
 
