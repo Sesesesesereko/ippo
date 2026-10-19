@@ -54,6 +54,23 @@ jobs:
       - name: Add 404 page for single-page app
         run: cp dist/index.html dist/404.html
 
+      - name: Try the main actions in a real browser
+        id: smoke
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          node scripts/smoke.mjs
+
+      - name: Save screenshots to the screenshots branch
+        if: always() && steps.smoke.outcome != 'skipped'
+        run: |
+          cd ci-screens
+          echo "${GITHUB_SHA}" > commit.txt
+          git init -q -b screenshots
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "screens for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" screenshots
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
