@@ -37,8 +37,13 @@ export function HomeScreen() {
           <Text style={styles.date}>{formatJapaneseDate(now)}</Text>
           <Text style={styles.hello}>おかえりなさい</Text>
         </View>
-        <View style={styles.pill}>
-          <Text style={styles.pillText}>今週 {visits}回 戻ってきた</Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <Pressable onPress={() => nav.push({ name: 'guide' })} accessibilityRole="button" style={styles.editHit}>
+            <Text style={styles.smallLink}>使い方</Text>
+          </Pressable>
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>今週 {visits}回 戻ってきた</Text>
+          </View>
         </View>
       </View>
 
@@ -92,7 +97,11 @@ export function HomeScreen() {
             </Pressable>
           </>
         ) : (
-          <Text style={styles.nowSub}>下の欄に、やることを1つ入れてみてください。ここに「いま やる ひとつ」が出ます。</Text>
+          <>
+            <Text style={styles.nowTitle}>まずは、やることを1つ</Text>
+            <Text style={styles.nowSub}>すぐ下の欄に、ひとことで入れてください。ここに「いま やる ひとつ」として出てきます。</Text>
+            <Btn kind="outlineDark" label="見本を入れて試す" onPress={() => dispatch({ type: 'LOAD_SAMPLE' })} />
+          </>
         )}
       </View>
 
@@ -148,6 +157,15 @@ function DepartureCard({ now }: { now: Date }) {
     setError('');
   };
 
+  if (!time && !editing) {
+    return (
+      <Pressable onPress={() => setEditing(true)} accessibilityRole="button" style={styles.departureMini}>
+        <Text style={{ fontSize: 14, color: colors.ink, flex: 1 }}>出かける時刻を入れると、残り時間が見えます</Text>
+        <Text style={styles.smallLink}>入れる ›</Text>
+      </Pressable>
+    );
+  }
+
   if (!time || editing) {
     return (
       <Card>
@@ -165,7 +183,10 @@ function DepartureCard({ now }: { now: Date }) {
           <Btn label="決める" onPress={save} style={{ minHeight: 48, minWidth: 80 }} />
         </View>
         {error !== '' && <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text>}
-        {time && <Btn small kind="ghost" label="やめる" onPress={() => setEditing(false)} />}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          {time && <Btn small kind="ghost" label="時刻を消す" onPress={() => { dispatch({ type: 'SET_DEPARTURE', time: null }); setText(''); setEditing(false); }} />}
+          <Btn small kind="ghost" label="やめる" onPress={() => { setEditing(false); setError(''); }} />
+        </View>
       </Card>
     );
   }
@@ -206,6 +227,17 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   smallLink: { fontSize: 13, color: colors.link },
   editHit: { minHeight: 32, justifyContent: 'center' },
+  departureMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    borderRadius: radius.l,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+  },
   muted: { fontSize: 13, color: colors.sub },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center', borderWidth: 1 },

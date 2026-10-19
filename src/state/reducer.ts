@@ -2,6 +2,7 @@
 import { AppData, createInitialData, Step, Task } from '../domain/types';
 import { dayKey } from '../domain/date';
 import { currentTask } from '../domain/selectors';
+import { sampleTasks } from '../domain/sample';
 
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -27,6 +28,8 @@ export type Action =
   | { type: 'SET_DEPARTURE'; time: string | null; label?: string }
   | { type: 'RECORD_VISIT'; date?: string }
   | { type: 'DISMISS_NOTICE' }
+  | { type: 'FINISH_ONBOARDING' }
+  | { type: 'LOAD_SAMPLE' }
   | { type: 'RESET_ALL' };
 
 function move<T>(list: T[], index: number, dir: -1 | 1): T[] {
@@ -152,6 +155,13 @@ export function reducer(data: AppData, action: Action): AppData {
 
     case 'DISMISS_NOTICE':
       return { ...data, noticeDismissed: true };
+
+    case 'FINISH_ONBOARDING':
+      return { ...data, onboarded: true };
+
+    case 'LOAD_SAMPLE':
+      // 見本は今あるやることの前に入れて、すぐ「いま やる ひとつ」で試せるようにする
+      return { ...data, onboarded: true, tasks: [...sampleTasks(), ...data.tasks] };
 
     case 'RESET_ALL':
       return createInitialData();

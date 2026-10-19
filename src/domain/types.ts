@@ -30,6 +30,7 @@ export interface AppData {
   departure: { time: string | null; label: string }; // time: "HH:MM"
   visitDays: string[]; // アプリを開いた日(YYYY-MM-DD)
   noticeDismissed: boolean; // 保存についての案内を閉じたか
+  onboarded: boolean; // 使い方の案内を見たか
 }
 
 export const DEFAULT_STEP_MINUTES = 5;
@@ -47,5 +48,6 @@ export function createInitialData(): AppData {
     departure: { time: null, label: '' },
     visitDays: [],
     noticeDismissed: false,
+    onboarded: false,
   };
 }

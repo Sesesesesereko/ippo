@@ -33,15 +33,22 @@ const step = async (name, fn) => {
   catch (e) { errors.push(`step "${name}": ${e.message.split('\n')[0]}`); console.log(`FAIL ${name}`); }
 };
 
-await step('ホームが開く', async () => {
+await step('初回に使い方が出る', async () => {
   await page.goto(`http://localhost:4173${base}/`);
-  await page.getByText('おかえりなさい').waitFor({ timeout: 20000 });
+  await page.getByText('いっぽ の使い方').waitFor({ timeout: 20000 });
+  await shot('0-guide');
+  await page.getByText('自分で始める', { exact: true }).click();
+});
+await step('ホームが開く', async () => {
+  await page.getByText('おかえりなさい').waitFor({ timeout: 10000 });
+  await page.getByText('まずは、やることを1つ').waitFor({ timeout: 5000 });
   await shot('1-home-empty');
 });
 await step('保存の案内が出ている', async () => {
   await page.getByText('ブラウザの中だけに保存', { exact: false }).first().waitFor({ timeout: 5000 });
 });
 await step('出発時刻を入れる', async () => {
+  await page.getByText('入れる ›', { exact: true }).click();
   await page.getByLabel('出発時刻').fill('23:59');
   await page.getByText('決める', { exact: true }).click();
   await page.getByText('出発まで').waitFor({ timeout: 5000 });
@@ -97,6 +104,14 @@ await step('データについて', async () => {
   await page.getByText('詳しく', { exact: true }).click();
   await page.getByText('データが消える・見えなくなる場合').waitFor({ timeout: 5000 });
   await shot('7-data');
+});
+
+await step('使い方から見本を入れる', async () => {
+  await page.getByLabel('戻る').click();
+  await page.getByText('使い方', { exact: true }).click();
+  await page.getByText('見本を入れて試す', { exact: true }).click();
+  await page.getByText('（見本）数学の課題プリント', { exact: false }).first().waitFor({ timeout: 5000 });
+  await shot('8-sample');
 });
 
 await browser.close();

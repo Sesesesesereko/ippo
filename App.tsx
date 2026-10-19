@@ -9,10 +9,11 @@ import { TaskEditScreen } from './src/screens/TaskEditScreen';
 import { FocusScreen } from './src/screens/FocusScreen';
 import { RoutinesScreen } from './src/screens/RoutinesScreen';
 import { DataScreen } from './src/screens/DataScreen';
+import { GuideScreen } from './src/screens/GuideScreen';
 import { colors } from './src/ui/theme';
 
 function Router() {
-  const { ready } = useAppState();
+  const { ready, data } = useAppState();
   const { route } = useNav();
   if (!ready) {
     return (
@@ -21,6 +22,7 @@ function Router() {
       </View>
     );
   }
+  if (!data.onboarded) return <GuideScreen firstTime />;
   switch (route.name) {
     case 'home':
       return <HomeScreen />;
@@ -34,6 +36,8 @@ function Router() {
       return <RoutinesScreen />;
     case 'data':
       return <DataScreen />;
+    case 'guide':
+      return <GuideScreen />;
   }
 }
 

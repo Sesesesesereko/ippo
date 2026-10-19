@@ -9,7 +9,8 @@ export type Route =
   | { name: 'taskEdit'; taskId: string }
   | { name: 'focus' }
   | { name: 'routines' }
-  | { name: 'data' };
+  | { name: 'data' }
+  | { name: 'guide' };
 
 interface NavValue {
   route: Route;

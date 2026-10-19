@@ -37,4 +37,12 @@ assert(formatRemaining(42).num === '42' && formatRemaining(42).unit === '分', '
 assert(formatRemaining(135).num === '2' && formatRemaining(135).rest === '15分', 'remaining hours');
 ['宿題','LINEの返信','明日の準備','ギター練習'].forEach(t => console.log(t, ruleBasedBreakdown({ title: t, granularity: 'rough' }).map(s => s.label).join(' / ')));
 
+{
+  let e = createInitialData();
+  assert(e.onboarded === false, 'first time shows guide');
+  e = reducer(e, { type: 'ADD_TASK', title: '自分のタスク' });
+  e = reducer(e, { type: 'LOAD_SAMPLE' });
+  assert(e.onboarded === true && e.tasks.length === 4 && e.tasks[0].title.startsWith('（見本）'), 'sample loads before own tasks');
+  assert(currentStep(e)!.total === 3, 'sample first task has steps');
+}
 if (failed > 0) throw new Error(`${failed} check(s) failed`);
