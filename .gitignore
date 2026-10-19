@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.expo/
+_tmp/
+setup_log.txt
+*.log
