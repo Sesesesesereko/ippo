@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "いっぽ",
+    "name": "スクショ係",
     "slug": "ippo",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -25,6 +25,18 @@
     },
     "experiments": {
       "baseUrl": "/ippo"
-    }
+    },
+    "scheme": "screenshot-kakari",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "スクショを選んで、種類ごとに分けるために写真を使います",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }

@@ -1,175 +1,162 @@
-// データの変更ルールをまとめた場所。画面に依存しないので、Web版・スマホ版で共通。
-import { AppData, createInitialData, Step, Task } from '../domain/types';
-import { dayKey } from '../domain/date';
-import { currentTask } from '../domain/selectors';
-import { sampleTasks } from '../domain/sample';
+// データの変え方を1か所にまとめる（画面から切り離した純粋な関数。Web版・スマホ版で共通）。
+import { Analysis, fallbackTitle, noTextTitle, redoDue } from '../domain/rules';
+import { Category, createSettings, FailReason, Item, ItemStatus, Settings } from '../domain/types';
 
-export function newId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+export interface DataState {
+  items: Item[];
+  settings: Settings;
+}
+
+export function createInitialState(): DataState {
+  return { items: [], settings: createSettings() };
 }
 
 export type Action =
-  | { type: 'LOAD'; data: AppData }
-  | { type: 'ADD_TASK'; title: string }
-  | { type: 'RENAME_TASK'; id: string; title: string }
-  | { type: 'DELETE_TASK'; id: string }
-  | { type: 'MOVE_TASK'; id: string; dir: -1 | 1 }
-  | { type: 'MAKE_CURRENT'; id: string }
-  | { type: 'CLEAR_DONE' }
-  | { type: 'SET_STEPS'; id: string; steps: { label: string; minutes: number }[] }
-  | { type: 'ADD_STEP'; id: string }
-  | { type: 'UPDATE_STEP'; id: string; stepId: string; label?: string; minutes?: number }
-  | { type: 'DELETE_STEP'; id: string; stepId: string }
-  | { type: 'MOVE_STEP'; id: string; stepId: string; dir: -1 | 1 }
-  | { type: 'COMPLETE_CURRENT_STEP'; id: string }
-  | { type: 'TOGGLE_ROUTINE'; routineId: string; date?: string }
-  | { type: 'ADD_ROUTINE'; label: string }
-  | { type: 'DELETE_ROUTINE'; id: string }
-  | { type: 'SET_DEPARTURE'; time: string | null; label?: string }
-  | { type: 'RECORD_VISIT'; date?: string }
-  | { type: 'DISMISS_NOTICE' }
-  | { type: 'FINISH_ONBOARDING' }
-  | { type: 'LOAD_SAMPLE' }
-  | { type: 'RESET_ALL' };
+  | { type: 'LOAD'; state: DataState }
+  | { type: 'ADD_SAMPLES'; items: Item[] }
+  | { type: 'REMOVE_SAMPLES' }
+  | { type: 'ADD_ITEM'; item: Item }
+  | { type: 'SET_STATUS'; id: string; status: ItemStatus; at: string }
+  | { type: 'APPLY_OCR'; id: string; text: string; analysis: Analysis | null; failReason?: FailReason; at: string; todayKey: string }
+  | { type: 'SET_TITLE'; id: string; title: string; at: string; todayKey: string }
+  | { type: 'SET_CATEGORY'; id: string; category: Category; at: string; todayKey: string }
+  | { type: 'SET_DUE'; id: string; due: string | null; at: string }
+  | { type: 'SET_DONE'; id: string; done: boolean; at: string }
+  | { type: 'DELETE'; id: string }
+  | { type: 'CLEAR_ALL' }
+  | { type: 'SETTINGS'; patch: Partial<Settings> };
 
-function move<T>(list: T[], index: number, dir: -1 | 1): T[] {
-  const to = index + dir;
-  if (index < 0 || to < 0 || to >= list.length) return list;
-  const copy = list.slice();
-  const [item] = copy.splice(index, 1);
-  copy.splice(to, 0, item);
-  return copy;
+function update(state: DataState, id: string, fn: (i: Item) => Item): DataState {
+  return { ...state, items: state.items.map((i) => (i.id === id ? fn(i) : i)) };
 }
 
-function updateTask(data: AppData, id: string, fn: (t: Task) => Task): AppData {
-  return { ...data, tasks: data.tasks.map((t) => (t.id === id ? fn(t) : t)) };
-}
-
-export function reducer(data: AppData, action: Action): AppData {
+export function reducer(state: DataState, action: Action): DataState {
   switch (action.type) {
     case 'LOAD':
-      return action.data;
-
-    case 'ADD_TASK': {
-      const title = action.title.trim();
-      if (!title) return data;
-      const task: Task = { id: newId('t'), title, steps: [], done: false, createdAt: new Date().toISOString() };
-      return { ...data, tasks: [...data.tasks, task] };
+      return action.state;
+    case 'ADD_SAMPLES': {
+      const others = state.items.filter((i) => !i.isSample);
+      return { ...state, items: [...others, ...action.items], settings: { ...state.settings, seenWelcome: true } };
     }
-
-    case 'RENAME_TASK':
-      return updateTask(data, action.id, (t) => ({ ...t, title: action.title }));
-
-    case 'DELETE_TASK':
-      return { ...data, tasks: data.tasks.filter((t) => t.id !== action.id) };
-
-    case 'MOVE_TASK': {
-      // 未完了タスクだけの並びの中で動かす
-      const open = data.tasks.filter((t) => !t.done);
-      const closed = data.tasks.filter((t) => t.done);
-      const i = open.findIndex((t) => t.id === action.id);
-      return { ...data, tasks: [...move(open, i, action.dir), ...closed] };
-    }
-
-    case 'MAKE_CURRENT': {
-      const target = data.tasks.find((t) => t.id === action.id);
-      if (!target) return data;
-      const others = data.tasks.filter((t) => t.id !== action.id);
-      return { ...data, tasks: [{ ...target, done: false }, ...others] };
-    }
-
-    case 'CLEAR_DONE':
-      return { ...data, tasks: data.tasks.filter((t) => !t.done) };
-
-    case 'SET_STEPS':
-      return updateTask(data, action.id, (t) => ({
-        ...t,
-        steps: action.steps.map<Step>((s) => ({ id: newId('s'), label: s.label, minutes: s.minutes, done: false })),
-      }));
-
-    case 'ADD_STEP':
-      return updateTask(data, action.id, (t) => ({
-        ...t,
-        steps: [...t.steps, { id: newId('s'), label: '', minutes: 5, done: false }],
-      }));
-
-    case 'UPDATE_STEP':
-      return updateTask(data, action.id, (t) => ({
-        ...t,
-        steps: t.steps.map((s) =>
-          s.id === action.stepId
-            ? {
-                ...s,
-                label: action.label ?? s.label,
-                minutes: action.minutes === undefined ? s.minutes : Math.min(180, Math.max(1, Math.round(action.minutes))),
-              }
-            : s,
-        ),
-      }));
-
-    case 'DELETE_STEP':
-      return updateTask(data, action.id, (t) => ({ ...t, steps: t.steps.filter((s) => s.id !== action.stepId) }));
-
-    case 'MOVE_STEP':
-      return updateTask(data, action.id, (t) => ({
-        ...t,
-        steps: move(t.steps, t.steps.findIndex((s) => s.id === action.stepId), action.dir),
-      }));
-
-    case 'COMPLETE_CURRENT_STEP':
-      return updateTask(data, action.id, (t) => {
-        if (t.steps.length === 0) return { ...t, done: true };
-        const idx = t.steps.findIndex((s) => !s.done);
-        if (idx === -1) return { ...t, done: true };
-        const steps = t.steps.map((s, i) => (i === idx ? { ...s, done: true } : s));
-        return { ...t, steps, done: steps.every((s) => s.done) };
+    case 'REMOVE_SAMPLES':
+      return { ...state, items: state.items.filter((i) => !i.isSample), settings: { ...state.settings, askedRemoveSample: true } };
+    case 'ADD_ITEM':
+      return { ...state, items: [...state.items, action.item], settings: { ...state.settings, seenWelcome: true } };
+    case 'SET_STATUS':
+      return update(state, action.id, (i) => ({ ...i, status: action.status, failReason: undefined, updatedAt: action.at }));
+    case 'APPLY_OCR':
+      return update(state, action.id, (i) => {
+        const createdKey = i.createdAt.slice(0, 10);
+        if (!action.analysis) {
+          // 文字が読めなかった：人が直したものは残し、それ以外は「その他」に
+          return {
+            ...i,
+            status: 'failed',
+            failReason: action.failReason ?? 'noText',
+            ocrText: action.text,
+            category: i.categoryEdited ? i.category : 'other',
+            title: i.titleEdited ? i.title : noTextTitle(localKey(i.createdAt) || createdKey),
+            updatedAt: action.at,
+          };
+        }
+        const a = action.analysis;
+        const category = i.categoryEdited ? i.category : a.category;
+        let dueDate = i.dueDate;
+        if (!i.dueEdited) {
+          dueDate = category === a.category ? a.dueDate : redoDue(action.text, category, action.todayKey);
+        }
+        let candidates = a.dueCandidates;
+        if (dueDate && !candidates.includes(dueDate) && !i.dueEdited) candidates = [...candidates.slice(0, 2), dueDate];
+        return {
+          ...i,
+          status: 'ready',
+          failReason: undefined,
+          ocrText: action.text,
+          category,
+          title: i.titleEdited ? i.title : a.title,
+          dueDate,
+          dueCandidates: candidates,
+          updatedAt: action.at,
+        };
       });
-
-    case 'TOGGLE_ROUTINE': {
-      const key = action.date ?? dayKey();
-      const list = data.routineLog[key] ?? [];
-      const next = list.includes(action.routineId)
-        ? list.filter((id) => id !== action.routineId)
-        : [...list, action.routineId];
-      return { ...data, routineLog: { ...data.routineLog, [key]: next } };
-    }
-
-    case 'ADD_ROUTINE': {
-      const label = action.label.trim();
-      if (!label) return data;
-      return { ...data, routines: [...data.routines, { id: newId('r'), label }] };
-    }
-
-    case 'DELETE_ROUTINE':
-      return { ...data, routines: data.routines.filter((r) => r.id !== action.id) };
-
-    case 'SET_DEPARTURE':
-      return { ...data, departure: { time: action.time, label: action.label ?? data.departure.label } };
-
-    case 'RECORD_VISIT': {
-      const key = action.date ?? dayKey();
-      if (data.visitDays.includes(key)) return data;
-      // 古い記録は60日分だけ残す
-      return { ...data, visitDays: [...data.visitDays, key].slice(-60) };
-    }
-
-    case 'DISMISS_NOTICE':
-      return { ...data, noticeDismissed: true };
-
-    case 'FINISH_ONBOARDING':
-      return { ...data, onboarded: true };
-
-    case 'LOAD_SAMPLE':
-      // 見本は今あるやることの前に入れて、すぐ「いま やる ひとつ」で試せるようにする
-      return { ...data, onboarded: true, tasks: [...sampleTasks(), ...data.tasks] };
-
-    case 'RESET_ALL':
-      return createInitialData();
-
-    default:
-      return data;
+    case 'SET_TITLE':
+      return update(state, action.id, (i) => {
+        const t = action.title.trim();
+        if (!t) {
+          // 空にしたら「種類名 月/日」に戻す
+          return { ...i, title: fallbackTitle(i.category, localKey(i.createdAt) || action.todayKey), titleEdited: false, updatedAt: action.at };
+        }
+        return { ...i, title: t, titleEdited: true, updatedAt: action.at };
+      });
+    case 'SET_CATEGORY':
+      return update(state, action.id, (i) => {
+        const next: Item = { ...i, category: action.category, categoryEdited: true, updatedAt: action.at };
+        if (!i.dueEdited && (i.status === 'ready' || i.isSample)) {
+          // 期限を人が直していなければ、新しい種類のルールで選び直す
+          const redo = redoDue(i.ocrText, action.category, action.todayKey);
+          next.dueDate = redo;
+          if (redo && !next.dueCandidates.includes(redo)) next.dueCandidates = [...next.dueCandidates.slice(0, 2), redo];
+        }
+        if (!i.titleEdited && !i.isSample && isAutoTitle(i)) {
+          next.title = fallbackTitle(action.category, localKey(i.createdAt) || action.todayKey);
+        }
+        return next;
+      });
+    case 'SET_DUE':
+      return update(state, action.id, (i) => ({ ...i, dueDate: action.due, dueEdited: true, updatedAt: action.at }));
+    case 'SET_DONE':
+      return update(state, action.id, (i) => ({ ...i, done: action.done, doneAt: action.done ? action.at : null, updatedAt: action.at }));
+    case 'DELETE':
+      return { ...state, items: state.items.filter((i) => i.id !== action.id) };
+    case 'CLEAR_ALL':
+      return { ...state, items: [] };
+    case 'SETTINGS':
+      return { ...state, settings: { ...state.settings, ...action.patch } };
   }
 }
 
-/** テストや確認用：いまのタスクを返す */
-export { currentTask };
+/** タイトルが自動の「種類名 月/日」の形か */
+function isAutoTitle(i: Item): boolean {
+  return /^(クーポン|予定|お店・場所|買いたい物|レシピ|その他) \d{1,2}\/\d{1,2}$/.test(i.title);
+}
+
+/** ISO日時 → 端末の日付 'YYYY-MM-DD' */
+export function localKey(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const p = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** 読み込んだときの整え方：途中で止まった読み取りは「止まりました」にする */
+export function afterLoad(state: DataState): DataState {
+  return {
+    ...state,
+    items: state.items.map((i) => (i.status === 'waiting' || i.status === 'reading' ? { ...i, status: 'stopped' as const } : i)),
+  };
+}
+
+/** 新しいスクショ（読み取り待ち） */
+export function newItem(id: string, now: Date, todayKey: string, width: number, height: number): Item {
+  const at = now.toISOString();
+  return {
+    id,
+    createdAt: at,
+    updatedAt: at,
+    hasImage: true,
+    imageWidth: width,
+    imageHeight: height,
+    status: 'waiting',
+    ocrText: '',
+    title: noTextTitle(todayKey),
+    category: 'other',
+    dueDate: null,
+    dueCandidates: [],
+    titleEdited: false,
+    categoryEdited: false,
+    dueEdited: false,
+    done: false,
+    doneAt: null,
+    isSample: false,
+  };
+}

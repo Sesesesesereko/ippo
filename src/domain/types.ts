@@ -1,53 +1,66 @@
 // アプリ全体で使うデータの形。Web版・スマホ版で共通。
 
-export type Granularity = 'rough' | 'normal' | 'fine';
+export type Category = 'coupon' | 'event' | 'place' | 'want' | 'recipe' | 'other';
 
-export interface Step {
-  id: string;
-  label: string;
-  minutes: number;
-  done: boolean;
-}
+export const CATEGORY_ORDER: Category[] = ['coupon', 'event', 'place', 'want', 'recipe', 'other'];
 
-export interface Task {
+export const CATEGORY_LABEL: Record<Category, string> = {
+  coupon: 'クーポン',
+  event: '予定',
+  place: 'お店・場所',
+  want: '買いたい物',
+  recipe: 'レシピ',
+  other: 'その他',
+};
+
+/** 読み取りの状態。failed＝文字が読めなかった、stopped＝途中で止まった */
+export type ItemStatus = 'waiting' | 'reading' | 'ready' | 'failed' | 'stopped';
+
+/** failed のときの理由。noText＝文字が無い、unavailable＝読み取りのしくみが使えない */
+export type FailReason = 'noText' | 'unavailable';
+
+export interface Item {
   id: string;
+  createdAt: string; // ISO 日時
+  updatedAt: string;
+  /** 画像があるか（画像そのものは画像の保存場所に id で入っている）。見本は画像なし */
+  hasImage: boolean;
+  imageWidth: number;
+  imageHeight: number;
+  status: ItemStatus;
+  failReason?: FailReason;
+  ocrText: string;
   title: string;
-  steps: Step[]; // 空なら、タスクそのものを1つの一歩として扱う
+  category: Category;
+  dueDate: string | null; // 'YYYY-MM-DD'
+  dueCandidates: string[]; // 最大3つ
+  titleEdited: boolean;
+  categoryEdited: boolean;
+  dueEdited: boolean;
   done: boolean;
-  createdAt: string; // ISO
+  doneAt: string | null;
+  isSample: boolean;
 }
 
-export interface Routine {
-  id: string;
-  label: string;
+export interface Settings {
+  schemaVersion: number;
+  seenWelcome: boolean;
+  seenHint: boolean;
+  askedRemoveSample: boolean;
+  ocrReady: boolean;
 }
 
-export interface AppData {
-  version: 1;
-  tasks: Task[]; // 配列の順番 = 表示順。先頭の未完了タスクが「いま やる ひとつ」
-  routines: Routine[];
-  routineLog: Record<string, string[]>; // 日付(YYYY-MM-DD) -> その日にチェックした日課のid
-  departure: { time: string | null; label: string }; // time: "HH:MM"
-  visitDays: string[]; // アプリを開いた日(YYYY-MM-DD)
-  noticeDismissed: boolean; // 保存についての案内を閉じたか
-  onboarded: boolean; // 使い方の案内を見たか
-}
+export const SCHEMA_VERSION = 1;
 
-export const DEFAULT_STEP_MINUTES = 5;
-
-export function createInitialData(): AppData {
+export function createSettings(): Settings {
   return {
-    version: 1,
-    tasks: [],
-    routines: [
-      { id: 'r-teeth', label: '歯みがき' },
-      { id: 'r-water', label: '水を飲む' },
-      { id: 'r-bag', label: '持ち物を確認' },
-    ],
-    routineLog: {},
-    departure: { time: null, label: '' },
-    visitDays: [],
-    noticeDismissed: false,
-    onboarded: false,
+    schemaVersion: SCHEMA_VERSION,
+    seenWelcome: false,
+    seenHint: false,
+    askedRemoveSample: false,
+    ocrReady: false,
   };
 }
+
+/** 一度に入れられる枚数 */
+export const MAX_IMPORT = 20;

@@ -17,6 +17,14 @@ const DEPS = [
   '@expo/metro-runtime',
   '@react-native-async-storage/async-storage',
   'react-native-svg',
+  'expo-router',
+  'react-native-safe-area-context',
+  'react-native-screens',
+  'expo-linking',
+  'expo-constants',
+  'expo-status-bar',
+  'expo-image-picker',
+  'expo-image-manipulator',
 ];
 
 if (!fs.existsSync(path.join(root, 'package.json'))) {
@@ -40,13 +48,16 @@ if (!fs.existsSync(path.join(root, 'package.json'))) {
   }
 }
 
-// app.json を整える（名前、Web出力、GitHub Pages 用の住所）
+// app.json を整える（名前、Web出力、GitHub Pages 用の住所、Expo Router の設定）
 const appJsonPath = path.join(root, 'app.json');
 const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
 const expo = (appJson.expo = appJson.expo || {});
-expo.name = 'いっぽ';
+expo.name = 'スクショ係';
 expo.slug = 'ippo';
 expo.web = { ...(expo.web || {}), output: 'single', bundler: 'metro' };
+expo.scheme = expo.scheme || 'screenshot-kakari';
+expo.plugins = expo.plugins || [];
+if (!expo.plugins.some((p) => (Array.isArray(p) ? p[0] : p) === 'expo-router')) expo.plugins.unshift('expo-router');
 const repo = (process.env.GITHUB_REPOSITORY || '').split('/')[1];
 if (repo) {
   expo.experiments = { ...(expo.experiments || {}), baseUrl: `/${repo}` };

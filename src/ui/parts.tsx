@@ -1,192 +1,295 @@
 // 何度も使う小さな部品。
 import React from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
-import { colors, font, radius, TOUCH } from './theme';
-import { useNav } from '../navigation/Nav';
-import { useAppState } from '../state/AppState';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Category, CATEGORY_LABEL } from '../domain/types';
+import { BackIcon, CategoryIcon, CheckIcon } from './icons';
+import { CATEGORY_COLOR, colors, font, MAIN_BUTTON, MAX_WIDTH, radius, TOUCH } from './theme';
 
-export function Screen({ children, dark, scroll = true }: { children: React.ReactNode; dark?: boolean; scroll?: boolean }) {
-  const bg = dark ? colors.deep : colors.bg;
-  const inner = <View style={styles.inner}>{children}</View>;
+/** データの置き場所の言い方（Web：ブラウザ、スマホ：端末） */
+export const PLACE_WORD = Platform.OS === 'web' ? 'このブラウザ' : 'この端末';
+
+/** 画面の外枠。中身は縦に流れ、bottom は画面の下に固定される */
+export function Screen({ children, bottom, scroll = true }: { children: React.ReactNode; bottom?: React.ReactNode; scroll?: boolean }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.screen, { backgroundColor: bg }]}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {inner}
+        <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.inner}>{children}</View>
         </ScrollView>
       ) : (
-        <View style={styles.scrollContent}>{inner}</View>
+        <View style={[styles.flex, styles.inner]}>{children}</View>
       )}
+      {bottom ? (
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
+          <View style={styles.bottomInner}>{bottom}</View>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-export function Header({ title, dark }: { title: string; dark?: boolean }) {
-  const nav = useNav();
-  const fg = dark ? '#F2F6F5' : colors.ink;
+export function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
+/** 上の帯：左に「＜ もどる」、中央に見出し */
+export function TopBar({ title, onBack = goBack }: { title?: string; onBack?: () => void }) {
   return (
-    <View style={styles.header}>
-      <Pressable accessibilityRole="button" accessibilityLabel="戻る" onPress={nav.back} style={styles.backBtn}>
-        <Text style={{ fontSize: 22, color: fg }}>‹</Text>
+    <View style={styles.topBar}>
+      <Pressable accessibilityRole="button" accessibilityLabel="もどる" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
+        <BackIcon color={colors.link} />
+        <Text style={styles.backText}>もどる</Text>
       </Pressable>
-      <Text style={[styles.headerTitle, { color: fg }]}>{title}</Text>
+      {title ? (
+        <Text style={styles.topTitle} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
+      <View style={styles.backSpacer} />
     </View>
   );
 }
 
-type BtnKind = 'accent' | 'primary' | 'ghost' | 'outlineDark' | 'danger';
+/** 主なボタン（藍色の塗りつぶし）。1画面に1つだけ使う */
+export function MainButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.mainBtn, pressed && styles.pressed, disabled && { opacity: 0.5 }]}
+    >
+      <Text style={styles.mainBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
-export function Btn({
-  label,
-  onPress,
-  kind = 'primary',
-  disabled,
-  style,
-  small,
-}: {
+/** 枠線のボタン（主なボタン以外の大事な操作） */
+export function OutlineButton({ label, onPress, danger, style }: { label: string; onPress: () => void; danger?: boolean; style?: ViewStyle }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.outlineBtn, danger && { borderColor: colors.danger }, pressed && styles.pressed, style]}
+    >
+      <Text style={[styles.outlineText, danger && { color: colors.danger }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** 文字のボタン（下線つき） */
+export function TextButton({ label, onPress, color = colors.link, style, underline = true, textStyle, accessibilityLabel }: {
   label: string;
   onPress: () => void;
-  kind?: BtnKind;
-  disabled?: boolean;
+  color?: string;
   style?: ViewStyle;
-  small?: boolean;
+  underline?: boolean;
+  textStyle?: TextStyle;
+  accessibilityLabel?: string;
 }) {
-  const k = btnKinds[kind];
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.btn,
-        small && styles.btnSmall,
-        { backgroundColor: k.bg, borderColor: k.border, opacity: disabled ? 0.45 : pressed ? 0.8 : 1 },
-        style,
-      ]}
-    >
-      <Text style={[styles.btnText, small && { fontSize: 14 }, { color: k.fg }]}>{label}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [styles.textBtn, pressed && styles.pressed, style]}>
+      <Text style={[styles.textBtnText, { color }, underline && { textDecorationLine: 'underline' }, textStyle]}>{label}</Text>
     </Pressable>
   );
 }
 
-const btnKinds: Record<BtnKind, { bg: string; fg: string; border: string }> = {
-  accent: { bg: colors.accent, fg: colors.ink, border: colors.accent },
-  primary: { bg: colors.deep, fg: '#F2F6F5', border: colors.deep },
-  ghost: { bg: 'transparent', fg: colors.link, border: 'transparent' },
-  outlineDark: { bg: 'transparent', fg: '#F2F6F5', border: colors.deepLine },
-  danger: { bg: colors.danger, fg: '#FFFFFF', border: colors.danger },
-};
-
-export function Field(props: TextInputProps & { dark?: boolean }) {
-  const { dark, style, ...rest } = props;
+/** 種類の札（薄い背景＋濃い色の文字と印）。selected なら塗りつぶし＋チェック */
+export function CategoryTag({ category, selected, size = 'm', onPress, count, label, fill }: {
+  category: Category;
+  selected?: boolean;
+  size?: 's' | 'm';
+  onPress?: () => void;
+  count?: number;
+  label?: string;
+  /** 枠いっぱいに広げ、中央にそろえる（くわしく画面の 3つずつ2段） */
+  fill?: boolean;
+}) {
+  const c = CATEGORY_COLOR[category];
+  const fg = selected ? '#FFFFFF' : c.fg;
+  const body = (
+    <>
+      {selected ? <CheckIcon color={fg} size={size === 's' ? 13 : 16} /> : <CategoryIcon category={category} color={fg} size={size === 's' ? 13 : 16} />}
+      <Text style={[styles.tagText, size === 's' && styles.tagTextS, fill && styles.tagTextFill, { color: fg }]} numberOfLines={1}>
+        {label ?? CATEGORY_LABEL[category]}
+        {count !== undefined ? ` ${count}` : ''}
+      </Text>
+    </>
+  );
+  const style = [styles.tag, size === 's' ? styles.tagS : styles.tagM, fill && styles.tagFill, { backgroundColor: selected ? c.fg : c.bg }];
+  if (!onPress) return <View style={style}>{body}</View>;
   return (
-    <TextInput
-      placeholderTextColor={dark ? '#7F9CA6' : '#8A9894'}
-      {...rest}
-      style={[
-        styles.field,
-        dark && { backgroundColor: colors.deepField, borderColor: colors.deepLine, color: '#F2F6F5' },
-        style,
-      ]}
-    />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      onPress={onPress}
+      style={({ pressed }) => [...style, pressed && styles.pressed]}
+    >
+      {body}
+    </Pressable>
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+/** 選び札（期限の候補・「すべて」など、種類以外） */
+export function Chip({ label, selected, onPress, accessibilityLabel }: { label: string; selected?: boolean; onPress: () => void; accessibilityLabel?: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected: !!selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && styles.pressed]}
+    >
+      {selected ? <CheckIcon color="#FFFFFF" size={15} /> : null}
+      <Text style={[styles.chipText, selected && { color: '#FFFFFF' }]}>{label}</Text>
+    </Pressable>
+  );
 }
 
-export function Label({ children, dark }: { children: React.ReactNode; dark?: boolean }) {
-  return <Text style={[styles.label, dark && { color: colors.deepSub }]}>{children}</Text>;
+/** 「仮版」の印（灰色の枠線だけ） */
+export function ProvisionalBadge({ onPress }: { onPress?: () => void }) {
+  const body = <Text style={styles.provText}>仮版</Text>;
+  if (!onPress) return <View style={styles.prov}>{body}</View>;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="仮版について" onPress={onPress} hitSlop={8} style={({ pressed }) => [styles.provTouch, pressed && styles.pressed]}>
+      <View style={styles.prov}>{body}</View>
+    </Pressable>
+  );
 }
 
-/** データの保存場所を知らせる表示（試作の間は常に出す） */
-export function StorageNotice() {
-  const { data, dispatch, storage } = useAppState();
-  const nav = useNav();
-  if (storage === 'unavailable') {
-    return (
-      <Pressable onPress={() => nav.push({ name: 'data' })} style={[styles.notice, { backgroundColor: '#FBE3DF' }]}>
-        <Text style={[styles.noticeText, { color: colors.danger }]}>
-          このブラウザでは保存できていません。閉じると内容が消えます。詳しく見る ›
-        </Text>
-      </Pressable>
-    );
-  }
-  if (!data.noticeDismissed) {
-    return (
-      <View style={styles.notice}>
-        <Text style={styles.noticeText}>
-          試作版です。データはこのブラウザの中だけに保存されます。履歴の削除、別の端末やブラウザ、プライベートモードでは消えたり見えなかったりします。
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 4, justifyContent: 'flex-end' }}>
-          <Btn small kind="ghost" label="詳しく" onPress={() => nav.push({ name: 'data' })} />
-          <Btn small kind="ghost" label="わかった" onPress={() => dispatch({ type: 'DISMISS_NOTICE' })} />
+/** 状態の札（見本・使った・済んだ・期限切れ） */
+export function StateTag({ label, dashed }: { label: string; dashed?: boolean }) {
+  return (
+    <View style={[styles.stateTag, dashed && { borderStyle: 'dashed' }]}>
+      <Text style={styles.stateTagText}>{label}</Text>
+    </View>
+  );
+}
+
+/** 灰色の枠の注意書き */
+export function Note({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.note, style]}>{children}</View>;
+}
+
+export function NoteText({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
+  return <Text style={[styles.noteText, style]}>{children}</Text>;
+}
+
+export function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <Text style={styles.sectionTitle} accessibilityRole="header">
+      {children}
+    </Text>
+  );
+}
+
+export function Loading() {
+  return (
+    <View style={[styles.screen, { alignItems: 'center', justifyContent: 'center' }]}>
+      <ActivityIndicator color={colors.primary} />
+    </View>
+  );
+}
+
+/** 下からせり上がる小さな窓 */
+export function Sheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title?: string; children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.sheetWrap}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="窓をとじる" />
+        <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]} accessibilityViewIsModal>
+          {title ? <Text style={styles.sheetTitle}>{title}</Text> : null}
+          {children}
         </View>
       </View>
-    );
-  }
-  return (
-    <Pressable onPress={() => nav.push({ name: 'data' })} style={styles.noticeMini}>
-      <Text style={styles.noticeMiniText}>試作版：データはこのブラウザ内だけに保存 ›</Text>
-    </Pressable>
+    </Modal>
   );
 }
 
-export function IconBtn({ label, a11y, onPress, disabled }: { label: string; a11y: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={a11y}
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [styles.iconBtn, { opacity: disabled ? 0.3 : pressed ? 0.6 : 1 }]}
-    >
-      <Text style={{ fontSize: 16, color: colors.sub }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  scrollContent: { flexGrow: 1, alignItems: 'center' },
-  inner: {
-    width: '100%',
-    maxWidth: 520,
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'web' ? 28 : 56,
-    paddingBottom: 32,
-    gap: 16,
-    flexGrow: 1,
+export const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  scrollContent: { flexGrow: 1, paddingBottom: 24 },
+  inner: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 16 },
+  bottomBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    backgroundColor: colors.bg,
+    paddingTop: 12,
+    paddingHorizontal: 16,
   },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  backBtn: { width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center', marginLeft: -10 },
-  headerTitle: { fontSize: font.title, fontWeight: '700' },
-  btn: {
-    minHeight: 52,
-    borderRadius: radius.m,
+  bottomInner: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center' },
+  pressed: { opacity: 0.6 },
+  topBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, marginHorizontal: -8 },
+  backBtn: { flexDirection: 'row', alignItems: 'center', minHeight: TOUCH, minWidth: 96, paddingHorizontal: 8, gap: 2 },
+  backText: { color: colors.link, fontSize: font.body, fontWeight: '600' },
+  backSpacer: { minWidth: 96 },
+  topTitle: { flex: 1, textAlign: 'center', fontSize: font.title - 2, fontWeight: '700', color: colors.ink },
+  mainBtn: {
+    height: MAIN_BUTTON,
+    borderRadius: radius.button,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    borderWidth: 1,
   },
-  btnSmall: { minHeight: TOUCH, paddingHorizontal: 10 },
-  btnText: { fontSize: 16, fontWeight: '700' },
-  field: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.m,
+  mainBtnText: { color: colors.primaryInk, fontSize: 17, fontWeight: '700' },
+  outlineBtn: {
+    minHeight: TOUCH + 4,
+    borderRadius: radius.button,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: colors.card,
+  },
+  outlineText: { color: colors.primary, fontSize: font.body, fontWeight: '700' },
+  textBtn: { minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
+  textBtnText: { fontSize: font.body, fontWeight: '600' },
+  tag: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill, gap: 6, alignSelf: 'flex-start' },
+  tagM: { minHeight: TOUCH, paddingHorizontal: 14 },
+  tagS: { paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
+  tagText: { fontSize: font.body, fontWeight: '700' },
+  tagTextS: { fontSize: 13 },
+  tagFill: { alignSelf: 'stretch', justifyContent: 'center', paddingHorizontal: 6, gap: 4 },
+  tagTextFill: { fontSize: 15, flexShrink: 1 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: TOUCH,
     paddingHorizontal: 14,
-    fontSize: font.body,
-    backgroundColor: colors.surface,
-    color: colors.ink,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.card,
   },
-  card: { backgroundColor: colors.surface, borderRadius: radius.l, padding: 16, gap: 10 },
-  label: { fontSize: font.label, color: colors.sub },
-  notice: { backgroundColor: colors.warnBg, borderRadius: radius.m, padding: 12, gap: 4 },
-  noticeText: { fontSize: font.label, color: colors.warnInk, lineHeight: 19 },
-  noticeMini: { alignSelf: 'flex-start', minHeight: 28, justifyContent: 'center' },
-  noticeMiniText: { fontSize: font.small, color: colors.warnInk },
-  iconBtn: { width: 36, height: TOUCH, alignItems: 'center', justifyContent: 'center' },
+  chipSelected: { backgroundColor: '#3D3D3D', borderColor: '#3D3D3D' },
+  chipText: { fontSize: font.body, color: colors.ink, fontWeight: '600' },
+  provTouch: { minHeight: TOUCH, minWidth: TOUCH, justifyContent: 'center', alignItems: 'center' },
+  prov: { borderWidth: 1, borderColor: '#8A8A8A', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+  provText: { fontSize: 13, color: '#5A5A5A', fontWeight: '600' },
+  stateTag: { borderWidth: 1, borderColor: '#8A8A8A', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, backgroundColor: '#FFFFFF' },
+  stateTagText: { fontSize: 13, color: '#4A4A4A', fontWeight: '600' },
+  note: { backgroundColor: colors.noteBg, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 6 },
+  noteText: { fontSize: font.small, color: '#4F4F4F', lineHeight: 21 },
+  sectionTitle: { fontSize: font.title, fontWeight: '700', color: colors.ink, marginTop: 20, marginBottom: 10 },
+  sheetWrap: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    gap: 12,
+    width: '100%',
+    maxWidth: MAX_WIDTH,
+    alignSelf: 'center',
+  },
+  sheetTitle: { fontSize: font.title, fontWeight: '700', color: colors.ink },
 });
