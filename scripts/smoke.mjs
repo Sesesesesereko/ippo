@@ -58,7 +58,12 @@ const btn = (name, exact = true) => page.getByRole('button', { name, exact }).fi
 const gone = async (text, exact = true) => {
   await page.getByText(text, { exact }).filter({ visible: true }).first().waitFor({ state: 'hidden', timeout: 8000 });
 };
-const back = () => btn('もどる').click();
+/** もどる（Stack では奥の画面にも「もどる」が残るので、一番手前＝最後のものを押し、住所が変わるのを待つ） */
+const back = async () => {
+  const before = page.url();
+  await page.getByRole('button', { name: 'もどる', exact: true }).filter({ visible: true }).last().click();
+  await page.waitForURL((u) => u.toString() !== before, { timeout: 8000 });
+};
 
 // 日付（ブラウザと同じ時刻帯で数える）
 const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -149,6 +154,7 @@ await step('一言の案内が「わかった」で消え、再読み込みし�
 await step('「仮版」の印を押すと説明が出る', async () => {
   await btn('仮版について').click();
   await vis('今は試作の仮版です').waitFor();
+  await page.waitForTimeout(600);
   await vis('お知らせ（通知）はスマホ版でつきます。今はホームの一番上に、期限が近いものを出します').waitFor();
   await shot('03-provisional');
   await btn('とじる').click();
@@ -290,6 +296,7 @@ await step('読み取りが終わり、種類と期限が入る', async () => {
 await step('「できた」でホームへ。見本を消すか1回だけ聞かれる', async () => {
   await btn('できた').click();
   await vis('見本を消しますか？').waitFor({ timeout: 8000 });
+  await page.waitForTimeout(600);
   await shot('10-ask-remove-sample');
   await btn('のこす').click();
   await gone('見本を消しますか？');
@@ -304,6 +311,7 @@ await step('読み取った文字のくわしく画面', async () => {
   await vis('2026年12月31日', false).waitFor();
   await shot('11-item-ocr');
   await back();
+  await vis('期限が近いもの').waitFor();
 });
 
 await step('再読み込み後も残る（画像・直した内容）', async () => {

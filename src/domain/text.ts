@@ -15,7 +15,7 @@ export function normalizeForSearch(s: string): string {
 
 const WIDE = '[\\u3000-\\u30FF\\u3400-\\u9FFF\\uFF00-\\uFFEF々〆ー]';
 const BETWEEN_WIDE = new RegExp(`(${WIDE})[ \\t]+(?=${WIDE})`, 'g');
-const WIDE_DIGIT = new RegExp(`(${WIDE})[ \\t]+(?=[0-9])|([0-9])[ \\t]+(?=${WIDE})`, 'g');
+const DATE_UNIT = /([0-9年月])[ \t]+([0-9年月日時分円])/g;
 
 /**
  * 読み取った文字の整理。
@@ -26,8 +26,8 @@ export function cleanOcrText(raw: string): string {
   let s = raw.normalize('NFKC').replace(/\r/g, '');
   // 日本語どうしの間の空白を消す（2回かけると「ク ー ポ」のような連続も消える）
   s = s.replace(BETWEEN_WIDE, '$1').replace(BETWEEN_WIDE, '$1');
-  // 日本語と数字の間の空白を消す（「2026 年 12 月」→「2026年12月」）
-  s = s.replace(WIDE_DIGIT, (_m, a, b) => a || b).replace(WIDE_DIGIT, (_m, a, b) => a || b);
+  // 数字と「年月日」などの間の空白を消す（「2026 年 12 月」→「2026年12月」）。「有効期限 2026年」の区切りは残す
+  s = s.replace(DATE_UNIT, '$1$2').replace(DATE_UNIT, '$1$2');
   // 数字どうしの間の1つの空白（「2 0 %」）を消す。ただし「10/31 11/3」の区切りは残すため、1桁ずつの並びだけ
   s = s.replace(/\b(\d) (?=\d\b)/g, '$1');
   // 記号まわりの空白

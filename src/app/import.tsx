@@ -72,7 +72,7 @@ function EntryCard({ entry, item, todayKey }: { entry: BatchEntry; item?: Item; 
         onPress={() => router.push(`/item/${item.id}`)}
         style={({ pressed }) => [s.cardRow, pressed && { opacity: 0.7 }]}
       >
-        <Shot item={item} style={s.thumb} />
+        <Shot item={item} style={s.thumb} contain />
         <View style={s.body}>
           {item.status === 'waiting' ? <Text style={s.msg}>じゅんばんを待っています</Text> : null}
           {item.status === 'reading' ? (

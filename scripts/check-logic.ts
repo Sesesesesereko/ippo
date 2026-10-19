@@ -75,7 +75,7 @@ eq(normalizeForSearch('ＣＡＦＥ'), normalizeForSearch('cafe'), 'そろえ方
 eq(categoryFromQuery('くーぽん'), 'coupon', '種類名で探す: くーぽん→クーポン');
 
 // 読み取った文字の整理
-eq(cleanOcrText('ク ー ポ ン 2 0 % O F F\n有 効 期 限 2026 年 12 月 31 日'), 'クーポン20%OFF\n有効期限2026年12月31日', '読み取り文字の空白を整える');
+eq(cleanOcrText('ク ー ポ ン 2 0 % O F F\n有 効 期 限 2026 年 12 月 31 日'), 'クーポン 20%OFF\n有効期限 2026年12月31日', '読み取り文字の空白を整える');
 eq(analyzeText(cleanOcrText('ク ー ポ ン 2 0 % O F F\n有 効 期 限 2026 年 12 月 31 日'), TODAY).dueDate, '2026-12-31', '整えた文字から期限が読める');
 
 // 日付の表示

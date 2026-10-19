@@ -1,6 +1,6 @@
 // E 探す画面
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { categoryFromQuery, search, SearchHit } from '../domain/selectors';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../domain/types';
@@ -119,7 +119,8 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
-  input: { flex: 1, fontSize: font.body + 1, color: colors.ink, paddingVertical: 12, minHeight: 48 },
+  // Web の入力欄の黒い枠（フォーカス枠）は外枠の色で代わりに示すので消す
+  input: { flex: 1, fontSize: font.body + 1, color: colors.ink, paddingVertical: 12, minHeight: 48, ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : {}) },
   clear: { width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' },
   h: { fontSize: font.body, fontWeight: '700', color: colors.sub, marginTop: 24, marginBottom: 10 },
   cats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

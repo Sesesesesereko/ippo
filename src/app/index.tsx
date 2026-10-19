@@ -153,7 +153,7 @@ const s = StyleSheet.create({
     paddingLeft: 14,
     marginBottom: 12,
   },
-  hintText: { flex: 1, fontSize: font.small + 1, color: colors.ink, paddingVertical: 8 },
+  hintText: { flex: 1, fontSize: font.small, color: colors.ink, paddingVertical: 8 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
