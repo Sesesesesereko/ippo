@@ -1,0 +1,45 @@
+name: Fetch docs (temporary)
+on:
+  push:
+    branches: [docs-fetch]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: fetch
+        run: |
+          mkdir -p out && cd out
+          while read -r p; do
+            [ -z "$p" ] && continue
+            f=$(echo "$p" | tr '/' '_')
+            curl -sSL "https://docs.expo.dev/$p" -o "$f" || echo "fail $p" >> fails.txt
+          done < ../pages.txt
+          for pk in expo-router react-native-safe-area-context react-native-screens expo-linking expo-constants expo-image-picker expo-image-manipulator; do
+            echo "$pk: $(npm view $pk dist-tags --json | tr -d '\n ')" >> versions.txt
+          done
+          curl -sSL https://cdn.jsdelivr.net/npm/tesseract.js@5/package.json -o tesseract-package.json || true
+          curl -sSL https://cdn.jsdelivr.net/npm/tesseract.js@5/README.md -o tesseract-readme.md || true
+          curl -sSL https://cdn.jsdelivr.net/npm/tesseract.js@5/docs/api.md -o tesseract-api.md || true
+      - name: install router into a copy of main to see versions
+        run: |
+          git clone -q --depth 1 -b main https://github.com/${GITHUB_REPOSITORY}.git m && cd m
+          npm install --no-audit --no-fund >/dev/null 2>&1
+          npx expo install expo-router react-native-safe-area-context react-native-screens expo-linking expo-constants expo-image-picker expo-image-manipulator > ../out/expo-install.log 2>&1 || true
+          cp package.json ../out/package-after.json
+          mkdir -p ../out/types
+          cp node_modules/expo-router/build/index.d.ts ../out/types/router-index.d.ts || true
+          ls node_modules/expo-router/build > ../out/types/router-build-ls.txt || true
+          cp node_modules/expo-router/package.json ../out/types/router-package.json || true
+          cp node_modules/expo-image-picker/build/ImagePicker.types.d.ts ../out/types/picker-types.d.ts || true
+          ls node_modules/expo-router/ > ../out/types/router-root-ls.txt || true
+          cp node_modules/expo-router/entry.js ../out/types/router-entry.js 2>/dev/null || true
+      - name: save
+        run: |
+          cd out && git init -q -b docs-out && git add -A
+          git -c user.name=bot -c user.email=bot@x commit -qm docs
+          git push -f -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" docs-out
