@@ -6,7 +6,7 @@ import { Btn, Card, Field, Label, Screen, StorageNotice } from '../ui/parts';
 import { colors, font, radius } from '../ui/theme';
 import { useNow } from '../ui/useNow';
 import { currentStep, laterTasks, routinesDoneToday } from '../domain/selectors';
-import { formatJapaneseDate, minutesUntil, normalizeTime, visitsThisWeek } from '../domain/date';
+import { formatJapaneseDate, formatRemaining, minutesUntil, normalizeTime, visitsThisWeek } from '../domain/date';
 
 export function HomeScreen() {
   const { data, dispatch } = useAppState();
@@ -185,8 +185,9 @@ function DepartureCard({ now }: { now: Date }) {
         <Text style={[styles.bigTime, { fontSize: 22 }]}>出発時刻を過ぎました</Text>
       ) : (
         <Text style={styles.bigTime}>
-          あと {mins}
-          <Text style={{ fontSize: 20 }}> 分</Text>
+          あと {formatRemaining(mins).num}
+          <Text style={{ fontSize: 20 }}> {formatRemaining(mins).unit}</Text>
+          {formatRemaining(mins).rest && <Text style={{ fontSize: 24 }}> {formatRemaining(mins).rest}</Text>}
         </Text>
       )}
       <View style={styles.barBg}>

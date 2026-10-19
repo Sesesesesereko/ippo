@@ -130,6 +130,8 @@ export function TaskEditScreen({ taskId }: { taskId: string }) {
                 value={s.label}
                 onChangeText={(v) => dispatch({ type: 'UPDATE_STEP', id: task.id, stepId: s.id, label: v })}
                 placeholder="手順を書く"
+                multiline
+                blurOnSubmit
                 style={styles.stepField}
                 accessibilityLabel={`手順${i + 1}`}
               />
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
   dot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.lineSoft, marginTop: 10 },
   dotNow: { backgroundColor: colors.accent },
   dotDone: { backgroundColor: colors.link },
-  stepField: { minHeight: 44, borderColor: colors.lineSoft },
+  stepField: { minHeight: 44, borderColor: colors.lineSoft, paddingTop: 11, paddingBottom: 11, lineHeight: 21, textAlignVertical: 'top' },
   minRow: { flexDirection: 'row', alignItems: 'center' },
   minText: { fontSize: 13, color: colors.sub, minWidth: 40, textAlign: 'center' },
 });

@@ -69,3 +69,11 @@ export function formatClock(totalSeconds: number): string {
   const m = Math.floor(s / 60);
   return `${m}:${pad(s % 60)}`;
 }
+
+/** 残り分数を読みやすく：60分未満は「N分」、それ以上は「H時間M分」 */
+export function formatRemaining(mins: number): { num: string; unit: string; rest?: string } {
+  if (mins < 60) return { num: String(mins), unit: '分' };
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return { num: String(h), unit: '時間', rest: m > 0 ? `${m}分` : undefined };
+}

@@ -79,7 +79,7 @@ await step('メモを置く', async () => {
 });
 await step('できたを押す', async () => {
   await page.getByText('できた', { exact: true }).click();
-  await page.getByText('次の一歩').waitFor({ timeout: 5000 });
+  await page.getByText('次の一歩', { exact: true }).waitFor({ timeout: 5000 });
   await shot('5-done');
 });
 await step('再読み込みしてもデータが残る', async () => {
@@ -94,7 +94,7 @@ await step('一覧で並べ替え', async () => {
 });
 await step('データについて', async () => {
   await page.getByLabel('戻る').click();
-  await page.getByText('ブラウザ内だけに保存', { exact: false }).click();
+  await page.getByText('詳しく', { exact: true }).click();
   await page.getByText('データが消える・見えなくなる場合').waitFor({ timeout: 5000 });
   await shot('7-data');
 });
